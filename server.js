@@ -7,13 +7,11 @@ require('dotenv').config();
 var http = require('http');
 var path = require('path');
 var express = require('express');
-var mongo = require('mongodb').MongoClient;
+var db = require('./app/db.js');
 var url = require('url');
-var googleImages = require('google-images');
-var dbURI = 'mongodb://localhost:27017/googleimages';
 var router = express();
 var server = http.createServer(router);
-var collection = 'entries';
+var google = require('./app/google.js');
 
 // static files (html, css ...)
 router.use(express.static(path.resolve(__dirname, 'client')));
@@ -22,17 +20,7 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 router.get('/latest', function(req, res){
   // setting json headers
   res.set({ 'Content-Type': 'application/json' });
-  mongo.connect(dbURI, function(err, db) {
-    if (err) throw err
-    // we wanna find the last searches
-    db.collection(collection).find({},{_id: 0}).sort( { date: 1 } ).limit(20).toArray(function(err, docs){
-      if(err) throw err;
-      if(docs.length == 0) res.send(JSON.stringify({error: 'No searches were processed recently'}))
-      else {
-        res.json(docs);
-      }
-    })
-  })
+  db.printLastSearch(res);
 });
 
 // route for a search
@@ -54,31 +42,12 @@ router.get('/search/*', function(req, res){
     searchEntry.offset = query.offset;
   }
   
-  saveSearchEntry(searchEntry);
-  processSearch(searchEntry, res);
+  db.saveSearchEntry(searchEntry);
+  google.processSearch(searchEntry, res);
   
 });
 
-function saveSearchEntry(entry){
-  // connexion to mongo
-  mongo.connect(dbURI, function(err, db) {
-    if (err) throw err
-    // inserting the search entry
-    db.collection(collection).insert(entry, function(err, doc){
-        if(err) throw err;
-        db.close();
-    })
-  })  
-}
 
-function processSearch(entry, response){
-  var client = googleImages(process.env.GOOGLE_CSE_ID, process.env.GOOGLE_API_KEY);
-  
-  client.search(entry.term, {page: entry.offset})
-      .then(function (images) {
-        response.json(images);
-      });
-}
 
 // listening to port and processing
 server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
