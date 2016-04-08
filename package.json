@@ -1,5 +1,5 @@
 {
-  "name": "url-shortener-microservice",
+  "name": "images-abstraction-layer",
   "version": "1.0.0",
   "description": "My implementation of the FCC Challenge for a Timestamp Microservice",
   "main": "server.js",
